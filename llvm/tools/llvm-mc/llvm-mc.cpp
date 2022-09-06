@@ -34,6 +34,7 @@
 #include "llvm/Support/Host.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/MemoryBuffer.h"
+#include "llvm/Support/Path.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/ToolOutputFile.h"
@@ -110,12 +111,13 @@ static cl::opt<bool>
                      cl::cat(MCCategory));
 
 enum OutputFileType {
+  OFT_NONE = -1,
   OFT_Null,
   OFT_AssemblyFile,
   OFT_ObjectFile
 };
 static cl::opt<OutputFileType>
-    FileType("filetype", cl::init(OFT_AssemblyFile),
+    FileType("filetype", cl::init(OFT_NONE),
              cl::desc("Choose an output file type:"),
              cl::values(clEnumValN(OFT_AssemblyFile, "asm",
                                    "Emit an assembly ('.s') file"),
@@ -372,6 +374,13 @@ int main(int argc, char **argv) {
   // Now that GetTarget() has (potentially) replaced TripleName, it's safe to
   // construct the Triple object.
   Triple TheTriple(TripleName);
+
+  if (FileType == OFT_NONE) {
+    if (!llvm::sys::path::filename(ProgName).compare("as"))
+      FileType = OFT_ObjectFile;
+    else
+      FileType = OFT_AssemblyFile;
+   }
 
   ErrorOr<std::unique_ptr<MemoryBuffer>> BufferPtr =
       MemoryBuffer::getFileOrSTDIN(InputFilename, /*IsText=*/true);
